@@ -1,0 +1,64 @@
+name: Deploy CV Agent Full Stack App to Google Cloud
+on:
+  push:
+    branches:
+      - main # Trigger on pushes to the main branch (or your primary branch)
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: '656737957839' # Replace with your Google Cloud Project ID
+      GCP_REGION: southamerica-east1 # Replace with your desired GCP region (e.g., us-central1)
+      FASTAPI_SERVICE_NAME: cvapi-backend-service # Name of your Cloud Run service
+      FASTAPI_BACKAPI_DIR: backend-cv-agent # Directory for your FastAPI backend - '.' means the root of the repository
+      REACT_APP_DIR: cv-agent-front # Directory name for your React frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # --- Backend (FastAPI on Cloud Run) Deployment ---
+      - name: Authenticate Google Cloud CLI
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}' # Use the GitHub Secret for GCP Service Account Key
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker to use Google Cloud Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+      - name: Build and Push Docker Image for FastAPI Backend
+        # Build the Docker image from the root directory
+        run: |
+          docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.FASTAPI_SERVICE_NAME }}/image:latest .
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.FASTAPI_SERVICE_NAME }}/image:latest
+      - name: Deploy FastAPI Backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.FASTAPI_SERVICE_NAME }} \
+            --image ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.FASTAPI_SERVICE_NAME }}/image:latest \
+            --region ${{ env.GCP_REGION }} \
+            --allow-unauthenticated \
+            --platform managed \
+            --set-env-vars OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \ # Correctly reference the new GitHub Secret
+            --port 8000 # Important: Match this to your Dockerfile's exposed port
+      # --- Frontend (React on Firebase Hosting) Deployment ---
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use a stable Node.js version compatible with your React app
+      - name: Install Frontend Dependencies
+        run: |
+          cd ${{ env.REACT_APP_DIR }}
+          npm install
+      - name: Build React App
+        run: |
+          cd ${{ env.REACT_APP_DIR }}
+          npm run build
+      - name: Deploy React App to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}' # GitHub's default token for repo access
+          firebaseServiceAccount: '${{ secrets.FIREBASE_TOKEN }}' # Your Firebase CI token secret
+          projectId: ${{ env.GCP_PROJECT_ID }} # Use the same project ID
+          channelId: live # Deploy to the live channel (or 'staging', etc.)
+          # Specify the directory where firebase.json is located relative to the repo root
+          # and the public directory relative to that firebase.json location
+          entryPoint: './${{ env.REACT_APP_DIR }}' # Path to your React app directory
+          publicDir: 'dist' # The 'dist' folder is inside the REACT_APP_DIR
