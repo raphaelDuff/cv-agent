@@ -7,7 +7,7 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     env:
-      GCP_PROJECT_ID: '656737957839' # Replace with your Google Cloud Project ID
+      GCP_PROJECT_ID: 'cv-raphael-ai' # Replace with your Google Cloud Project ID
       GCP_REGION: southamerica-east1 # Replace with your desired GCP region (e.g., us-central1)
       FASTAPI_SERVICE_NAME: cvapi-backend-service # Name of your Cloud Run service
       FASTAPI_BACKAPI_DIR: backend-cv-agent # Directory for your FastAPI backend - '.' means the root of the repository
