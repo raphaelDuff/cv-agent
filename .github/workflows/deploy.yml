@@ -37,7 +37,7 @@ jobs:
             --region ${{ env.GCP_REGION }} \
             --allow-unauthenticated \
             --platform managed \
-            --set-env-vars OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \ # Correctly reference the new GitHub Secret
+            --set-env-vars OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             --port 8000 # Important: Match this to your Dockerfile's exposed port
       # --- Frontend (React on Firebase Hosting) Deployment ---
       - name: Set up Node.js
