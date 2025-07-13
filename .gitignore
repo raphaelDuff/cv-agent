@@ -305,15 +305,15 @@ docker-compose.override.yml
 
 # === PROJECT SPECIFIC ===
 
-# Uploaded CV files (if stored locally)
-uploads/
-*.pdf
+# Backend uploaded CV files (if stored locally)
+backend-cv-agent/uploads/
+backend-cv-agent/*.pdf
 
-# Generated graph images
-graph_images/
-*.png
-*.jpg
-*.jpeg
+# Backend generated graph images
+backend-cv-agent/graph_images/
+backend-cv-agent/*.png
+backend-cv-agent/*.jpg
+backend-cv-agent/*.jpeg
 
 # Temporary files
 *.tmp

@@ -131,7 +131,7 @@ const CVAgent = () => {
                 Processando com LangGraph...
               </>
             ) : (
-              "Escolher Arquivo PDF"
+              "Escolher Currículo PDF"
             )}
           </label>
 

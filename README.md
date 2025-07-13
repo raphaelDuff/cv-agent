@@ -90,7 +90,7 @@ The application follows a sophisticated **multi-agent architecture** using LangG
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd cv-agent-langgraph
+cd cv-agent-langgraph/backend-cv-agent
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -127,12 +127,13 @@ Refer to `GoogleCloudDeployInstructions.md` for detailed Google Cloud deployment
 
 ```
 cv-agent-langgraph/
-├── 📄 main.py                 # Application entry point
-├── 🖥️ server.py               # FastAPI server configuration
-├── 🤖 cv_agent.py            # Core LangGraph agent logic
-├── 📋 models.py              # Pydantic data models
-├── 📦 requirements.txt       # Python dependencies
-├── 🐳 Dockerfile            # Container configuration
+├── backend-cv-agent/        # Python Backend
+│   ├── 📄 main.py           # Application entry point
+│   ├── 🖥️ server.py         # FastAPI server configuration
+│   ├── 🤖 cv_agent.py      # Core LangGraph agent logic
+│   ├── 📋 models.py         # Pydantic data models
+│   ├── 📦 requirements.txt  # Python dependencies
+│   └── 🐳 Dockerfile       # Container configuration
 ├── cv-agent-front/          # React frontend
 │   ├── 📦 package.json      # Frontend dependencies
 │   ├── ⚛️ src/

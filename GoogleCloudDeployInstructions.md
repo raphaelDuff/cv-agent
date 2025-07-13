@@ -17,14 +17,16 @@ Cloud Run is a fully managed compute platform that enables you to deploy statele
 
 ### Step 1: Prepare your FastAPI application
 
-#### Create a Project Directory:
+#### Navigate to Backend Directory:
 
-Create a new directory for your FastAPI project (e.g., `fastapi-backend`).
-Inside this directory, save the FastAPI code (provided previously) as `main.py`.
+The FastAPI backend is located in the `backend-cv-agent` directory.
+```bash
+cd backend-cv-agent
+```
 
-#### Create requirements.txt:
+#### Requirements and Dependencies:
 
-In the same `fastapi-backend` directory, create a file named `requirements.txt` with the following content:
+The `requirements.txt` file is already included in the `backend-cv-agent` directory with all necessary dependencies:
 
 ```txt
 fastapi==0.111.0
@@ -34,11 +36,9 @@ python-dotenv==1.0.1
 
 **Note**: `python-dotenv` is added here if you use it for local development, but it won't be used in Cloud Run for production environment variables.
 
-#### Create .dockerignore (to exclude files/folders):
+#### Docker Configuration:
 
-In the same `fastapi-backend` directory, create a file named `.dockerignore` (note the leading dot). This file tells Docker which files and directories to ignore when building the image, preventing them from being copied into the container.
-
-Add the following line to your `.dockerignore` file to exclude the cv-agent-front folder:
+The `Dockerfile` is already included in the `backend-cv-agent` directory. Create a `.dockerignore` file in the same directory to exclude unnecessary files from the Docker build context:
 
 ```
 cv-agent-front/
