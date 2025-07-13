@@ -312,12 +312,13 @@ After completing these steps, your Google Cloud project will appear in the Fireb
 3. **Click on "+ Grant Access"** at the top.
 
 4. **For your user account** (e.g., `pratesrop@gmail.com`):
+
    - In the "**New principals**" field, enter your email address
    - In the "**Select a role**" dropdown, search for and add:
      - `Cloud Run Admin`
      - `Service Account User`
      - `Storage Admin` (or `Storage Object Admin`)
-     - *(Optional, but comprehensive for development)* `Editor`
+     - _(Optional, but comprehensive for development)_ `Editor`
    - Click "**Save**"
 
 5. **For the Cloud Build Service Account**:
@@ -368,5 +369,3 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 ```
 
 After granting these permissions, try running your `gcloud run deploy` command again. This should resolve the `PERMISSION_DENIED` error.
-
-This setup provides a simple, scalable, and cost-effective way to deploy your React and FastAPI applications on Google Cloud, perfect for demonstrating your skills in a job interview!
