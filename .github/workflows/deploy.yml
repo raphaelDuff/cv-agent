@@ -56,7 +56,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}' # GitHub's default token for repo access
-          firebaseServiceAccount: '${{ secrets.FIREBASE_TOKEN }}' # Your Firebase CI token secret
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' # Your Firebase SERVICE ACCOUNT KEY
           projectId: ${{ env.GCP_PROJECT_ID }} # Use the same project ID
           channelId: live # Deploy to the live channel (or 'staging', etc.)
           # Specify the directory where firebase.json is located relative to the repo root
