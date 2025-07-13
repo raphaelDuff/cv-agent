@@ -375,3 +375,8 @@ secrets.json
 
 # Turbo
 .turbo
+
+*.firebase/
+
+# Frontend production environment file
+cv-agent-front/.env.production

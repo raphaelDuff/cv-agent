@@ -134,6 +134,11 @@ class CVServer:
             except Exception as e:
                 raise HTTPException(500, f"Erro ao gerar Mermaid: {str(e)}")
 
+        @self.app.get("/status-check")
+        async def get_backend_status():
+            """Return the backend status"""
+            return {"message": "Backend is running!"}
+
     def get_app(self):
         """Retorna a instância do FastAPI app"""
         return self.app
