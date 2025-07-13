@@ -293,3 +293,80 @@ After successful deployment, the Firebase CLI will provide a "Hosting URL" (e.g.
    You'll be prompted to enable Google Analytics. While optional, it's recommended for a complete Firebase experience and provides useful insights.
 
 After completing these steps, your Google Cloud project will appear in the Firebase CLI project list during `firebase init`.
+
+#### Permission Denied Errors During Deployment
+
+**Problem**: You encounter `PERMISSION_DENIED` errors when running `gcloud run deploy` or other Google Cloud commands.
+
+**Explanation**: This typically happens when your user account or service accounts don't have the necessary IAM roles to perform the deployment operations.
+
+**Solution**: Grant the required permissions using either the Google Cloud Console or gcloud commands.
+
+##### Option 1: Using Google Cloud Console (Recommended for ease of use)
+
+1. **Go to the IAM & Admin page** in your Google Cloud Console:  
+   https://console.cloud.google.com/iam-admin/iam
+
+2. **Select your project** from the top dropdown.
+
+3. **Click on "+ Grant Access"** at the top.
+
+4. **For your user account** (e.g., `pratesrop@gmail.com`):
+   - In the "**New principals**" field, enter your email address
+   - In the "**Select a role**" dropdown, search for and add:
+     - `Cloud Run Admin`
+     - `Service Account User`
+     - `Storage Admin` (or `Storage Object Admin`)
+     - *(Optional, but comprehensive for development)* `Editor`
+   - Click "**Save**"
+
+5. **For the Cloud Build Service Account**:
+   - First, find its name in the IAM table. Look for a principal ending with `@cloudbuild.gserviceaccount.com`
+   - It's usually named: `[PROJECT_NUMBER]@cloudbuild.gserviceaccount.com`
+   - Click on "**+ Grant Access**" again
+   - In the "**New principals**" field, paste the Cloud Build service account email
+   - In the "**Select a role**" dropdown, search for and add:
+     - `Cloud Run Developer`
+     - `Artifact Registry Writer` (if using Artifact Registry)
+     - `Storage Object Creator`
+   - Click "**Save**"
+
+##### Option 2: Using gcloud Commands (More programmatic)
+
+Replace `YOUR_PROJECT_ID` with your actual project ID and `PROJECT_NUMBER` with your project number. You can get your project number by running `gcloud projects describe YOUR_PROJECT_ID`.
+
+```bash
+# Get your project number (needed for Cloud Build service account)
+PROJECT_NUMBER=$(gcloud projects describe YOUR_PROJECT_ID --format="value(projectNumber)")
+CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+
+# Grant roles to your user account
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="user:pratesrop@gmail.com" \
+    --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="user:pratesrop@gmail.com" \
+    --role="roles/iam.serviceAccountUser"
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="user:pratesrop@gmail.com" \
+    --role="roles/storage.admin"  # Or roles/storage.objectAdmin
+
+# Grant roles to the Cloud Build service account
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="serviceAccount:${CLOUD_BUILD_SA}" \
+    --role="roles/run.developer"
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="serviceAccount:${CLOUD_BUILD_SA}" \
+    --role="roles/artifactregistry.writer"  # If using Artifact Registry
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="serviceAccount:${CLOUD_BUILD_SA}" \
+    --role="roles/storage.objectCreator"
+```
+
+After granting these permissions, try running your `gcloud run deploy` command again. This should resolve the `PERMISSION_DENIED` error.
+
+This setup provides a simple, scalable, and cost-effective way to deploy your React and FastAPI applications on Google Cloud, perfect for demonstrating your skills in a job interview!
