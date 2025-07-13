@@ -27,6 +27,7 @@ jobs:
       - name: Build and Push Docker Image for FastAPI Backend
         # Build the Docker image from the root directory
         run: |
+          cd ${{ env.FASTAPI_BACKAPI_DIR }}
           docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.FASTAPI_SERVICE_NAME }}/image:latest .
           docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.FASTAPI_SERVICE_NAME }}/image:latest
       - name: Deploy FastAPI Backend to Cloud Run
