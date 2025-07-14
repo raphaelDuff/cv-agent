@@ -1,7 +1,8 @@
 import tempfile
 import os
 import json
-from typing import Dict, Any
+import asyncio
+from typing import Dict, Any, List
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain.tools import Tool
@@ -26,36 +27,12 @@ class CVAgent:
     def setup_tools(self):
         """Ferramentas especializadas para análise de CV"""
         self.tools = {
-            "extract_experience": Tool(
-                name="extract_experience",
-                description="Extrai experiência profissional detalhada do CV",
-                func=self.extract_experience,
-            ),
-            "extract_skills": Tool(
-                name="extract_skills",
-                description="Extrai habilidades técnicas e competências",
-                func=self.extract_skills,
-            ),
-            "extract_education": Tool(
-                name="extract_education",
-                description="Extrai formação acadêmica e certificações",
-                func=self.extract_education,
-            ),
-            "extract_projects": Tool(
-                name="extract_projects",
-                description="Extrai projetos e realizações",
-                func=self.extract_projects,
-            ),
-            "extract_personal_info": Tool(
-                name="extract_personal_info",
-                description="Extrai informações pessoais e contato",
-                func=self.extract_personal_info,
-            ),
-            "analyze_career_progression": Tool(
-                name="analyze_career_progression",
-                description="Analisa progressão e crescimento profissional",
-                func=self.analyze_career_progression,
-            ),
+            "extract_experience": self.extract_experience,
+            "extract_skills": self.extract_skills,
+            "extract_education": self.extract_education,
+            "extract_projects": self.extract_projects,
+            "extract_personal_info": self.extract_personal_info,
+            "analyze_career_progression": self.analyze_career_progression,
         }
 
     def setup_graph(self):
@@ -107,7 +84,7 @@ class CVAgent:
 
     # === NODES DO WORKFLOW ===
 
-    def classify_question(self, state: CVAgentState) -> CVAgentState:
+    async def classify_question(self, state: CVAgentState) -> CVAgentState:
         """Classifica o tipo de pergunta e complexidade"""
         question = state["current_question"]
 
@@ -134,7 +111,7 @@ class CVAgent:
         Retorne apenas: TIPO|COMPLEXIDADE
         """
 
-        response = self.llm.invoke([HumanMessage(content=classification_prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=classification_prompt)])
         classification = response.content.strip().split("|")
 
         question_type = classification[0].lower()
@@ -191,26 +168,42 @@ class CVAgent:
 
         return state
 
-    def extract_information(self, state: CVAgentState) -> CVAgentState:
-        """Extrai informações usando as ferramentas selecionadas"""
+    async def extract_information(self, state: CVAgentState) -> CVAgentState:
+        """Extrai informações usando as ferramentas selecionadas com execução concorrente"""
         tools_to_use = state["tools_used"]
         extracted_data = {}
 
-        for tool_name in tools_to_use:
-            if tool_name in self.tools:
-                try:
-                    result = self.tools[tool_name].func(state["cv_content"])
-                    extracted_data[tool_name] = result
-                except Exception as e:
-                    logger.error(f"Erro ao usar ferramenta {tool_name}: {e}")
-                    extracted_data[tool_name] = f"Erro na extração: {str(e)}"
+        # Execute tools concorrently using asyncio.gather
+        async def run_tool(tool_name: str) -> tuple[str, str]:
+            """Execute a single tool and return (tool_name, result)"""
+            try:
+                if tool_name in self.tools:
+                    result = await self.tools[tool_name](state["cv_content"])
+                    return tool_name, result
+                else:
+                    return tool_name, f"Ferramenta {tool_name} não encontrada"
+            except Exception as e:
+                logger.error(f"Erro ao usar ferramenta {tool_name}: {e}")
+                return tool_name, f"Erro na extração: {str(e)}"
+
+        # Run all tools concurrently
+        if tools_to_use:
+            tasks = [run_tool(tool_name) for tool_name in tools_to_use]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(f"Erro na execução de ferramenta: {result}")
+                    continue
+                tool_name, tool_result = result
+                extracted_data[tool_name] = tool_result
 
         state["extracted_info"].update(extracted_data)
         state["workflow_path"].append("information_extractor")
 
         return state
 
-    def analyze_context(self, state: CVAgentState) -> CVAgentState:
+    async def analyze_context(self, state: CVAgentState) -> CVAgentState:
         """Analisa o contexto e prepara informações relevantes"""
         question = state["current_question"]
         extracted_info = state["extracted_info"]
@@ -233,7 +226,7 @@ class CVAgent:
 
         return state
 
-    def generate_answer(self, state: CVAgentState) -> CVAgentState:
+    async def generate_answer(self, state: CVAgentState) -> CVAgentState:
         """Gera resposta baseada no contexto analisado"""
         question = state["current_question"]
         context = state["extracted_info"].get("context_analysis", "")
@@ -286,7 +279,7 @@ class CVAgent:
         Responda:
         """
 
-        response = self.llm.invoke(
+        response = await self.llm.ainvoke(
             [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=generation_prompt),
@@ -298,7 +291,7 @@ class CVAgent:
 
         return state
 
-    def validate_quality(self, state: CVAgentState) -> CVAgentState:
+    async def validate_quality(self, state: CVAgentState) -> CVAgentState:
         """Valida a qualidade da resposta"""
         answer = state["final_answer"]
         question = state["current_question"]
@@ -320,7 +313,7 @@ class CVAgent:
         Retorne apenas: APROVADO ou REJEITAR_MOTIVO
         """
 
-        response = self.llm.invoke([HumanMessage(content=validation_prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=validation_prompt)])
         validation_result = response.content.strip()
 
         state["answer_attempts"] = attempts + 1
@@ -350,7 +343,7 @@ class CVAgent:
         else:
             return "reclassify"
 
-    def calculate_confidence(self, state: CVAgentState) -> CVAgentState:
+    async def calculate_confidence(self, state: CVAgentState) -> CVAgentState:
         """Calcula score de confiança da resposta"""
         validation = state["extracted_info"].get("validation", "")
         tools_used = len(state["tools_used"])
@@ -380,7 +373,7 @@ class CVAgent:
 
     # === FERRAMENTAS DE EXTRAÇÃO ===
 
-    def extract_experience(self, cv_text: str) -> str:
+    async def extract_experience(self, cv_text: str) -> str:
         """Extrai experiência profissional"""
         prompt = f"""
         Extraia TODAS as experiências profissionais do CV:
@@ -397,10 +390,10 @@ class CVAgent:
         Formato: JSON com lista de experiências
         """
 
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
         return response.content
 
-    def extract_skills(self, cv_text: str) -> str:
+    async def extract_skills(self, cv_text: str) -> str:
         """Extrai habilidades técnicas"""
         prompt = f"""
         Extraia TODAS as habilidades técnicas do CV:
@@ -418,10 +411,10 @@ class CVAgent:
         Formato: JSON estruturado
         """
 
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
         return response.content
 
-    def extract_education(self, cv_text: str) -> str:
+    async def extract_education(self, cv_text: str) -> str:
         """Extrai formação acadêmica"""
         prompt = f"""
         Extraia TODA a formação acadêmica do CV:
@@ -438,10 +431,10 @@ class CVAgent:
         Formato: JSON estruturado
         """
 
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
         return response.content
 
-    def extract_projects(self, cv_text: str) -> str:
+    async def extract_projects(self, cv_text: str) -> str:
         """Extrai projetos"""
         prompt = f"""
         Extraia TODOS os projetos mencionados no CV:
@@ -457,10 +450,10 @@ class CVAgent:
         Formato: JSON estruturado
         """
 
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
         return response.content
 
-    def extract_personal_info(self, cv_text: str) -> str:
+    async def extract_personal_info(self, cv_text: str) -> str:
         """Extrai informações pessoais"""
         prompt = f"""
         Extraia informações pessoais do CV:
@@ -477,10 +470,10 @@ class CVAgent:
         Formato: JSON estruturado
         """
 
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
         return response.content
 
-    def analyze_career_progression(self, cv_text: str) -> str:
+    async def analyze_career_progression(self, cv_text: str) -> str:
         """Analisa progressão profissional"""
         prompt = f"""
         Analise a progressão profissional no CV:
@@ -497,7 +490,7 @@ class CVAgent:
         Formato: Análise estruturada
         """
 
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
         return response.content
 
     async def process_cv(self, file_content: bytes, filename: str) -> dict:
